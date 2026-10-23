@@ -25,6 +25,60 @@ html, body, [class*="css"] {font-family:'DM Sans',sans-serif;}
 div[data-testid="stMetric"] {background:#211e27;border:1px solid #49383b;padding:16px 18px;border-radius:16px;}
 .stButton>button, .stFormSubmitButton>button {border-radius:12px;border:0;background:linear-gradient(90deg,#e8a76f,#f4cb91);color:#241610;font-weight:800;padding:10px 20px;}
 .stButton>button:hover,.stFormSubmitButton>button:hover {background:#ffe0b4;color:#241610;}
+/* Improve readability across the dashboard */
+[data-testid="stAppViewContainer"] {
+    background-color: #111827;
+    color: #F9FAFB;
+}
+
+[data-testid="stMetric"] {
+    background-color: #25212B;
+    border: 1px solid #59434A;
+    border-radius: 14px;
+    padding: 18px;
+}
+
+[data-testid="stMetricLabel"] {
+    color: #E5E7EB !important;
+}
+
+[data-testid="stMetricValue"] {
+    color: #FFFFFF !important;
+}
+
+[data-testid="stMarkdownContainer"] p,
+[data-testid="stMarkdownContainer"] h1,
+[data-testid="stMarkdownContainer"] h2,
+[data-testid="stMarkdownContainer"] h3 {
+    color: #F9FAFB;
+}
+
+[data-testid="stSidebar"] {
+    background-color: #19151D;
+}
+
+/* Sidebar readability fix */
+[data-testid="stSidebar"] {
+    background-color: #19151D !important;
+}
+
+[data-testid="stSidebar"] p,
+[data-testid="stSidebar"] label,
+[data-testid="stSidebar"] span,
+[data-testid="stSidebar"] h1,
+[data-testid="stSidebar"] h2,
+[data-testid="stSidebar"] h3 {
+    color: #F3F4F6 !important;
+    opacity: 1 !important;
+}
+
+[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] {
+    color: #F3F4F6 !important;
+}
+
+[data-testid="stSidebar"] [role="radiogroup"] label {
+    color: #F3F4F6 !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
