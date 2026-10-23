@@ -31,7 +31,25 @@ div[data-testid="stMetric"] {background:#211e27;border:1px solid #49383b;padding
 @st.cache_resource
 def load_model(): return joblib.load(MODEL_PATH)
 @st.cache_data
-def load_data(): return pd.read_csv(DATA_PATH, low_memory=False)
+def load_data():
+    df = pd.read_csv(DATA_PATH, low_memory=False)
+
+    if "returned_within_14_days" in df.columns:
+        df["returned_within_14_days"] = (
+            df["returned_within_14_days"]
+            .replace({
+                "Yes": 1, "No": 0,
+                "yes": 1, "no": 0,
+                "True": 1, "False": 0,
+                "true": 1, "false": 0
+            })
+        )
+
+        df["returned_within_14_days"] = pd.to_numeric(
+            df["returned_within_14_days"], errors="coerce"
+        ).astype("float64")
+
+    return df
 
 def options(df, col, fallback):
     if col not in df: return fallback
