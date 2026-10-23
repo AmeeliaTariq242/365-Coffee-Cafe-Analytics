@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import joblib
 from pathlib import Path
+import plotly.express as px
 
 st.set_page_config(page_title="365 Coffee Café | Guest Return Intelligence", page_icon="☕", layout="wide", initial_sidebar_state="expanded")
 BASE = Path(__file__).resolve().parent
@@ -214,12 +215,34 @@ elif page == "Guest Insights":
     df["returned_within_14_days"], errors="coerce"
         ).astype("float64")
 
-            agg = df.groupby("loyalty_tier")["returned_within_14_days"].agg(
-    return_rate="mean",
-    visits="count"
+        agg = df.groupby("loyalty_tier")["returned_within_14_days"].agg(
+                return_rate="mean",
+                visits="count"
             ).sort_values("return_rate", ascending=False)
-            agg = df.groupby("loyalty_tier")["returned_within_14_days"].agg(return_rate="mean", visits="count").sort_values("return_rate", ascending=False)
-            st.bar_chart(agg[["return_rate"]]); st.dataframe(agg.style.format({"return_rate":"{:.1%}","visits":"{:,.0f}"}),use_container_width=True)
+
+            fig = px.bar(
+                agg.reset_index(),
+                x="loyalty_tier",
+                y="return_rate",
+                title="Return by Loyalty Tier",
+                labels={
+                    "loyalty_tier": "Loyalty Tier",
+                    "return_rate": "Return Rate"
+                },
+                color_discrete_sequence=["#D6A36B"]
+            )
+
+            fig.update_layout(
+                template="plotly_dark",
+                paper_bgcolor="#17151D",
+                plot_bgcolor="#17151D",
+                font_color="#F8F1E8",
+                xaxis=dict(showgrid=False),
+                yaxis=dict(showgrid=True, gridcolor="#39323D", tickformat=".0%")
+            )
+
+            st.plotly_chart(fig, use_container_width=True)
+            st.dataframe(agg.style.format({"return_rate": "{:.1%}"}))
             st.caption("Associations are descriptive and do not prove that loyalty tier causes a return.")
     with t2:
         if {"wait_time_min","returned_within_14_days"}.issubset(df.columns):
