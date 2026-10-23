@@ -125,7 +125,8 @@ elif page == "Guest Insights":
     t1,t2,t3 = st.tabs(["Return by loyalty tier", "Service experience", "Visit patterns"])
     with t1:
         if {"loyalty_tier","returned_within_14_days"}.issubset(df.columns):
-            agg = df.groupby("loyalty_tier").returned_within_14_days.agg(return_rate="mean", visits="count").sort_values("return_rate",ascending=False)
+            df["returned_within_14_days"] = pd.to_numeric(df["returned_within_14_days"], errors="coerce")
+            agg = df.groupby("loyalty_tier")["returned_within_14_days"].agg(return_rate="mean", visits="count").sort_values("return_rate", ascending=False)
             st.bar_chart(agg[["return_rate"]]); st.dataframe(agg.style.format({"return_rate":"{:.1%}","visits":"{:,.0f}"}),use_container_width=True)
             st.caption("Associations are descriptive and do not prove that loyalty tier causes a return.")
     with t2:
