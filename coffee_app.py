@@ -97,15 +97,21 @@ if page == "Return Predictor":
         st.markdown('<div class="panel"><div class="eyebrow">Café pulse</div><h3>Dataset snapshot</h3>', unsafe_allow_html=True)
         st.metric("Visits represented", f"{len(df):,}")
         if "returned_within_14_days" in df:
+            return_values = df["returned_within_14_days"].replace({
+                "Yes": 1, "No": 0,
+                "yes": 1, "no": 0,
+                "True": 1, "False": 0,
+                True: 1, False: 0
+            })
+
             rate = pd.to_numeric(
-            df["returned_within_14_days"], errors="coerce"
+                return_values, errors="coerce"
             ).mean()
 
-        if pd.isna(rate):
-          st.metric("Observed return rate", "N/A")
-        else:
-            st.metric("Observed return rate", f"{rate:.1%}")
-            st.metric("Observed return rate", f"{rate:.1%}" if pd.notna(rate) else "—")
+            st.metric(
+                "Observed return rate",
+                f"{rate:.1%}" if pd.notna(rate) else "N/A"
+            )
         if "wait_time_min" in df:
             st.metric("Average wait time", f"{pd.to_numeric(df.wait_time_min,errors='coerce').mean():.1f} min")
         st.markdown('<p class="small-muted">Statistics describe the dataset supplied with this app, not real-time café operations.</p></div>', unsafe_allow_html=True)
