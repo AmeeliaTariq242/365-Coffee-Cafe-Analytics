@@ -201,23 +201,43 @@ if page == "Return Predictor":
             st.progress(min(max(p,0.0),1.0), text="Estimated probability of return")
             st.warning("Decision-support estimate only, not a guarantee. Model probability may not be calibrated and should not be used as the sole basis for decisions about an individual guest.")
         except Exception as e: st.error(f"Unable to generate prediction for these inputs: {e}")
-elif page == "Guest Insights":
-    st.markdown('<div class="hero"><div class="eyebrow">Hospitality analytics</div><h1>Guest Insights</h1><p>Review patterns in visits, service and customer returns to help frame practical experiments.</p></div>', unsafe_allow_html=True)
-    c1,c2,c3,c4 = st.columns(4)
-    c1.metric("Visits", f"{len(df):,}")
-    if "returned_within_14_days" in df: c2.metric("Observed return rate", f"{pd.to_numeric(df.returned_within_14_days,errors='coerce').mean():.1%}")
-    if "service_rating" in df: c3.metric("Average rating", f"{pd.to_numeric(df.service_rating,errors='coerce').mean():.2f}/5")
-    if "wait_time_min" in df: c4.metric("Average wait", f"{pd.to_numeric(df.wait_time_min,errors='coerce').mean():.1f} min")
-    t1,t2,t3 = st.tabs(["Return by loyalty tier", "Service experience", "Visit patterns"])
-    with t1:
-        if {"loyalty_tier","returned_within_14_days"}.issubset(df.columns):
-            df["returned_within_14_days"] = pd.to_numeric(
-    df["returned_within_14_days"], errors="coerce"
-        ).astype("float64")
 
-        agg = df.groupby("loyalty_tier")["returned_within_14_days"].agg(
-                return_rate="mean",
-                visits="count"
+elif page == "Guest Insights":
+    st.markdown(
+        '<div class="hero"><div class="eyebrow">Hospitality analytics</div>'
+        '<h1>Guest Insights</h1>'
+        '<p>Review patterns in visits, service and customer returns to help frame practical experiments.</p></div>',
+        unsafe_allow_html=True
+    )
+
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Visits", f"{len(df):,}")
+
+    return_values = pd.to_numeric(df["returned_within_14_days"], errors="coerce")
+    return_rate = return_values.mean()
+
+    c2.metric(
+        "Observed return rate",
+        f"{return_rate:.1%}" if pd.notna(return_rate) else "N/A"
+    )
+
+    if "service_rating" in df:
+        c3.metric("Average rating", f"{pd.to_numeric(df['service_rating'], errors='coerce').mean():.2f}/5")
+    if "wait_time_min" in df:
+        c4.metric("Average wait", f"{pd.to_numeric(df['wait_time_min'], errors='coerce').mean():.1f} min")
+
+    t1, t2, t3 = st.tabs([
+        "Return by loyalty tier",
+        "Service experience",
+        "Visit patterns"
+    ])
+
+    with t1:
+        if "loyalty_tier" in df.columns:
+            chart_data = df.assign(return_value=return_values)
+            agg = chart_data.groupby("loyalty_tier").agg(
+                return_rate=("return_value", "mean"),
+                visits=("return_value", "count")
             ).sort_values("return_rate", ascending=False)
 
             fig = px.bar(
@@ -225,13 +245,9 @@ elif page == "Guest Insights":
                 x="loyalty_tier",
                 y="return_rate",
                 title="Return by Loyalty Tier",
-                labels={
-                    "loyalty_tier": "Loyalty Tier",
-                    "return_rate": "Return Rate"
-                },
-                color_discrete_sequence=["#D6A36B"]
+                color_discrete_sequence=["#D6A36B"],
+                labels={"loyalty_tier": "Loyalty Tier", "return_rate": "Return Rate"}
             )
-
             fig.update_layout(
                 template="plotly_dark",
                 paper_bgcolor="#17151D",
@@ -240,20 +256,138 @@ elif page == "Guest Insights":
                 xaxis=dict(showgrid=False),
                 yaxis=dict(showgrid=True, gridcolor="#39323D", tickformat=".0%")
             )
-
             st.plotly_chart(fig, use_container_width=True)
-            st.dataframe(agg.style.format({"return_rate": "{:.1%}"}))
-            st.caption("Associations are descriptive and do not prove that loyalty tier causes a return.")
+            st.dataframe(agg.style.format({"return_rate": "{:.1%}", "visits": "{:,.0f}"}), use_container_width=True)
+        else:
+            st.info("The dataset does not contain a loyalty tier column.")
+
+        st.caption("Associations are descriptive and do not prove that loyalty tier causes a return.")
+
     with t2:
-        if {"wait_time_min","returned_within_14_days"}.issubset(df.columns):
-            temp=df[["wait_time_min","returned_within_14_days"]].copy(); temp["wait_band"]=pd.cut(pd.to_numeric(temp.wait_time_min,errors="coerce"),[ -0.01,3,5,10,20,240],labels=["0–3","4–5","6–10","11–20","20+"])
-            agg=temp.groupby("wait_band",observed=False).returned_within_14_days.agg(return_rate="mean",visits="count")
-            st.bar_chart(agg[["return_rate"]]); st.dataframe(agg.style.format({"return_rate":"{:.1%}","visits":"{:,.0f}"}),use_container_width=True)
+        if {"wait_time_min", "returned_within_14_days"}.issubset(df.columns):
+            temp = df[["wait_time_min"]].copy()
+            temp["return_value"] = return_values
+            temp["wait_band"] = pd.cut(
+                pd.to_numeric(temp["wait_time_min"], errors="coerce"),
+                [-0.01, 3, 5, 10, 20, 240],
+                labels=["0–3", "4–5", "6–10", "11–20", "20+"]
+            )
+            agg = temp.groupby("wait_band", observed=False).agg(
+                return_rate=("return_value", "mean"),
+                visits=("return_value", "count")
+            )
+
+            fig = px.bar(
+                agg.reset_index(),
+                x="wait_band",
+                y="return_rate",
+                title="Return Rate by Wait Time",
+                color_discrete_sequence=["#D6A36B"],
+                labels={"wait_band": "Wait Time (minutes)", "return_rate": "Return Rate"}
+            )
+            fig.update_layout(
+                template="plotly_dark",
+                paper_bgcolor="#17151D",
+                plot_bgcolor="#17151D",
+                font_color="#F8F1E8",
+                xaxis=dict(showgrid=False),
+                yaxis=dict(showgrid=True, gridcolor="#39323D", tickformat=".0%")
+            )
+            st.plotly_chart(fig, use_container_width=True)
+            dark_table = (
+                agg.style
+                .format({
+                    "return_rate": "{:.1%}",
+                    "visits": "{:,.0f}"
+                })
+                .set_table_styles([
+                    {
+                        "selector": "",
+                        "props": [
+                            ("background-color", "#211E27"),
+                            ("color", "#F8F1E8"),
+                            ("border-color", "#49383B")
+                        ]
+                    },
+                    {
+                        "selector": "th",
+                        "props": [
+                            ("background-color", "#302832"),
+                            ("color", "#F8F1E8"),
+                            ("border-color", "#49383B")
+                        ]
+                    },
+                    {
+                        "selector": "td",
+                        "props": [
+                            ("background-color", "#211E27"),
+                            ("color", "#F8F1E8"),
+                            ("border-color", "#49383B")
+                        ]
+                    }
+                ])
+            )
+
+            st.dataframe(dark_table, use_container_width=True)
+
     with t3:
-        col = "weekday" if "weekday" in df else "transaction_hour"
-        if col in df and "returned_within_14_days" in df:
-            agg=df.groupby(col).returned_within_14_days.agg(return_rate="mean",visits="count")
-            st.bar_chart(agg[["return_rate"]]); st.dataframe(agg.style.format({"return_rate":"{:.1%}","visits":"{:,.0f}"}),use_container_width=True)
+        col = "weekday" if "weekday" in df.columns else "transaction_hour"
+        if col in df.columns:
+            chart_data = df.assign(return_value=return_values)
+            agg = chart_data.groupby(col).agg(
+                return_rate=("return_value", "mean"),
+                visits=("return_value", "count")
+            )
+
+            fig = px.bar(
+                agg.reset_index(),
+                x=col,
+                y="return_rate",
+                title=f"Return Rate by {col.replace('_', ' ').title()}",
+                color_discrete_sequence=["#D6A36B"],
+                labels={col: col.replace("_", " ").title(), "return_rate": "Return Rate"}
+            )
+            fig.update_layout(
+                template="plotly_dark",
+                paper_bgcolor="#17151D",
+                plot_bgcolor="#17151D",
+                font_color="#F8F1E8",
+                xaxis=dict(showgrid=False),
+                yaxis=dict(showgrid=True, gridcolor="#39323D", tickformat=".0%")
+            )
+            st.plotly_chart(fig, use_container_width=True)
+            table_html = dark_table.to_html()
+
+        st.markdown(
+            f"""
+            <div style="overflow-x:auto; border-radius:10px;">
+                {table_html}
+            </div>
+            <style>
+                table {{
+                    width: 100%;
+                    background-color: #211E27 !important;
+                    color: #F8F1E8 !important;
+                    border-collapse: collapse;
+                }}
+                table th {{
+                    background-color: #302832 !important;
+                    color: #F8F1E8 !important;
+                    padding: 12px;
+                    border: 1px solid #49383B !important;
+                    text-align: left;
+                }}
+                table td {{
+                    background-color: #211E27 !important;
+                    color: #F8F1E8 !important;
+                    padding: 12px;
+                    border: 1px solid #49383B !important;
+                }}
+            </style>
+            """,
+            unsafe_allow_html=True
+        )
+
 else:
     st.markdown('<div class="hero"><div class="eyebrow">Transparency</div><h1>About the model</h1><p>How to interpret a return estimate responsibly.</p></div>', unsafe_allow_html=True)
     st.markdown('<div class="panel"><h3>Model approach</h3><ul><li>Supervised binary classification using a Random Forest pipeline.</li><li>Inputs describe the visit, customer attributes available in the supplied data, channel, promotion and service experience.</li><li>The prediction target is whether the customer returns within 14 days.</li></ul></div>', unsafe_allow_html=True)
